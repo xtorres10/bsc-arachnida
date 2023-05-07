@@ -2,42 +2,67 @@ import os
 import requests
 import argparse
 from bs4 import BeautifulSoup
+import time
 
 
 def spider(parser):
     s = requests.Session()
     resp = s.get(parser.url)
     soup = BeautifulSoup(resp.text, 'html.parser')
-    # links = soup.a
-    # soon = links.next_sibling.next_sibling.next_sibling.next_sibling
-    # print(soon)
-    # for l in links:
-    #     l['href']
-    # for p in link.parents:
-    #     print(p.name)
+    # tags = soup('a')
+    # for link in tags:
+    #     print(link.contents[0], link.get('href'))
     imgs = soup.find_all('img', recursive=parser.r)
     url_imgs = set()
-    i = 0
     for s in imgs:
         url_imgs.add(s['src'])
+    ### start = time.time()
+    ### download_imgs(url_imgs, parser.p, parser.url)
     for img in url_imgs:
-        if 'http' not in img:
+        if img[:4] != 'http':
             img = parser.url + img
         download_img(img, parser.p)
+    ### end = time.time()
+    ### print("The time of execution is: ", (end-start) * 10**3, "ms")
 
 
 def download_img(url, path):
     resp = requests.get(url, stream=True)
-    name = url.split('/')[-1]
-    ext = name.split('.')[-1]
-    if ext in ['jpg', 'jpeg', 'png', 'gif', 'bmp']:
-        file = os.path.join(path, name)
-        if resp.status_code == 200:
-            with open(file, mode='x') as f:
+    if resp.status_code == 200:
+        name = url.split('/')[-1]
+        ext = name.split('.')[-1]
+        if ext in ['jpg', 'jpeg', 'png', 'gif', 'bmp']:
+            file = os.path.join(path, name)
+            try:
+                fn = open(file, mode='x')
+                fn.close()
+            except FileExistsError:
+                pass
+            finally:
                 with open(file, mode='wb') as f:
-                    f.write(resp.content)
-                    f.close()
+                    f.write(resp.content)            
+                
 
+
+def download_imgs(urls, path, origin):
+    i = 0
+    for url in urls:
+        if url[:4] != 'http':
+            url = origin + url
+        resp = requests.get(url, stream=True)
+        if resp.status_code == 200:
+            ext = url.split('.')[-1]
+            if ext in ['jpg', 'jpeg', 'png', 'gif', 'bmp']:
+                file = os.path.join(path, 'img' + str(i) + '.' + ext)
+                try:
+                    fn = open(file, mode='x')
+                    fn.close()
+                except FileExistsError:
+                    pass
+                finally:
+                    with open(file, mode='wb') as f:
+                        f.write(resp.content)       
+                i += 1
 
 
 if __name__ == '__main__':
